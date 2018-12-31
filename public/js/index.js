@@ -11,6 +11,10 @@ socket.on('disconnect', function() {
   console.log('Disconnected from server');
 });
 
+socket.on('clientJoin', m => console.log(m));
+
+socket.on('newClientJoin', m => console.log(m));
+
 const newMessage = (message) => {
   socket.emit('newMessage', message);
 };

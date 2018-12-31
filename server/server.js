@@ -27,9 +27,12 @@ io.on('connection', socket => {
     console.log('User disconnected');
   });
 
+  socket.emit('clientJoin', 'welcome to the chat app!');
+  socket.broadcast.emit('newClientJoin', 'a new user has joined our chatroom!');
+
   socket.on('newMessage', (message) => {
     console.log(message);
-    io.emit('newMessage', message);
+    socket.broadcast.emit('newMessage', message);
   })
 });
 
