@@ -3,6 +3,8 @@ const socketIO = require('socket.io');
 const http = require('http');
 const path = require('path');
 
+const generateMessage = require('./utils/message');
+
 require('dotenv').config();
 
 const publicPath = path.join(__dirname, '../public');
@@ -27,12 +29,15 @@ io.on('connection', socket => {
     console.log('User disconnected');
   });
 
-  socket.emit('clientJoin', 'welcome to the chat app!');
-  socket.broadcast.emit('newClientJoin', 'a new user has joined our chatroom!');
+  socket.emit('newMessage', generateMessage('Admin', 'Welcome to the ChatApp!'));
+  socket.broadcast.emit('newMessage', generateMessage('Admin', 'A new user has joined us!'));
 
-  socket.on('newMessage', (message) => {
-    console.log(message);
-    socket.broadcast.emit('newMessage', message);
+  socket.on('createMessage', (m, callback) => {
+    const msg = generateMessage(m.sender, m.text);
+    console.log(msg);
+    io.emit('newMessage', msg);
+    // socket.broadcast.emit('newMessage', msg);
+    callback('Sever has successfully received your message.');
   })
 });
 
@@ -41,4 +46,3 @@ server.listen(process.env.PORT, () => {
   console.log(`LISTENING ON PORT ${process.env.PORT}`);
   console.log('========================');
 })
-
