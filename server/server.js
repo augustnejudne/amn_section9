@@ -32,12 +32,12 @@ io.on('connection', socket => {
   socket.emit('serverMsg', generateMessage('Admin', 'Welcome to the ChatApp!'));
   socket.broadcast.emit('serverMsg', generateMessage('Admin', 'A new user has joined us!'));
 
-  socket.on('clientMsg', (m, callback) => {
+  socket.on('clientMsg', (m) => {
     const msg = generateMessage(m.sender, m.text);
     console.log(msg);
     io.emit('serverMsg', msg);
     // socket.broadcast.emit('newMessage', msg);
-    callback('Sever has successfully received your message.');
+    // callback('Sever has successfully received your message.');
   });
 
   socket.on('clientLocation', (location) => {

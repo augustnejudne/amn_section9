@@ -9,6 +9,33 @@ const sendLocationButton = $('#sendLocationButton');
 // UTILS
 const timeFormat = 'h:mm:ss a';
 
+const scrollToBottom = () => {
+  // // Selectors
+  const newMessage = messages.children('li:last-child');
+
+  // // Heights
+  const clientHeight = messages.prop('clientHeight');
+  const scrollTop = messages.prop('scrollTop');
+  const scrollHeight = messages.prop('scrollHeight');
+  const newMessageHeight = newMessage.innerHeight();
+  const lastMessageHeight = newMessage.prev().innerHeight();
+
+  // console.log('================================================');
+  // console.log('clientHeight', clientHeight);
+  // console.log('scrollTop', scrollTop);
+  // console.log('scrollHeight', scrollHeight);
+  // console.log('newMessageHeight', newMessageHeight);
+  // console.log('lastMessageHeight', lastMessageHeight);
+  // console.log('================================================');
+
+  if(clientHeight + scrollTop + newMessageHeight + lastMessageHeight >= scrollHeight) {
+    console.log('========================');
+    console.log('scrollToBottom() called');
+    console.log('========================');
+    messages.scrollTop(scrollHeight);
+  }
+};
+
 // REMEMBER: .on() is a listener
 socket.on('connect', function() {
   console.log('Connected to server');
@@ -24,6 +51,7 @@ socket.on('serverMsg', function(m) {
   });
 
   messages.append(html);
+  scrollToBottom();
 
   // console.log(m);
   // const li = $('<li></li>');
@@ -41,6 +69,7 @@ socket.on('clientLocation', function(m) {
   });
 
   messages.append(html);
+  scrollToBottom();
   // console.log(m);
   // const li = $('<li></li>');
   // const a = $('<a target="_blank">My current location</a>');
@@ -59,9 +88,7 @@ socket.on('disconnect', function() {
 // socket.on('newClientJoin', m => console.log(m));
 
 function newMessage(message) {
-  socket.emit('clientMsg', {sender: 'client', text: message }, function(data) {
-    console.log(data);
-  });
+  socket.emit('clientMsg', {sender: 'client', text: message });
 }
 
 
