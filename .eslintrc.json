@@ -9,6 +9,7 @@
         "ecmaVersion": 2015
     },
     "rules": {
+        "no-undef": 0,
         "no-console": 0,
         "indent": [
             "error",

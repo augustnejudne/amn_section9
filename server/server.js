@@ -3,7 +3,7 @@ const socketIO = require('socket.io');
 const http = require('http');
 const path = require('path');
 
-const generateMessage = require('./utils/message');
+const { generateMessage, generateLocationMessage } = require('./utils/message');
 
 require('dotenv').config();
 
@@ -29,20 +29,24 @@ io.on('connection', socket => {
     console.log('User disconnected');
   });
 
-  socket.emit('newMessage', generateMessage('Admin', 'Welcome to the ChatApp!'));
-  socket.broadcast.emit('newMessage', generateMessage('Admin', 'A new user has joined us!'));
+  socket.emit('serverMsg', generateMessage('Admin', 'Welcome to the ChatApp!'));
+  socket.broadcast.emit('serverMsg', generateMessage('Admin', 'A new user has joined us!'));
 
-  socket.on('createMessage', (m, callback) => {
+  socket.on('clientMsg', (m, callback) => {
     const msg = generateMessage(m.sender, m.text);
     console.log(msg);
-    io.emit('newMessage', msg);
+    io.emit('serverMsg', msg);
     // socket.broadcast.emit('newMessage', msg);
     callback('Sever has successfully received your message.');
-  })
+  });
+
+  socket.on('clientLocation', (location) => {
+    io.emit('clientLocation', generateLocationMessage('Admin', location.latitude, location.longitude));
+  });
 });
 
 server.listen(process.env.PORT, () => {
   console.log('========================');
   console.log(`LISTENING ON PORT ${process.env.PORT}`);
   console.log('========================');
-})
+});
