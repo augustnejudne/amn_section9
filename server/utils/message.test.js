@@ -1,5 +1,5 @@
 const { assert } = require('chai');
-const generateMessage = require('./message');
+const { generateMessage } = require('./message');
 
 describe('generate message', () => {
   it('generates a message', done => {
@@ -10,4 +10,4 @@ describe('generate message', () => {
     assert.property(result, 'createdAt');
     done();
   });
-})
+});

@@ -20,25 +20,23 @@ const scrollToBottom = () => {
   const newMessageHeight = newMessage.innerHeight();
   const lastMessageHeight = newMessage.prev().innerHeight();
 
-  // console.log('================================================');
-  // console.log('clientHeight', clientHeight);
-  // console.log('scrollTop', scrollTop);
-  // console.log('scrollHeight', scrollHeight);
-  // console.log('newMessageHeight', newMessageHeight);
-  // console.log('lastMessageHeight', lastMessageHeight);
-  // console.log('================================================');
-
   if(clientHeight + scrollTop + newMessageHeight + lastMessageHeight >= scrollHeight) {
-    console.log('========================');
-    console.log('scrollToBottom() called');
-    console.log('========================');
     messages.scrollTop(scrollHeight);
   }
 };
 
 // REMEMBER: .on() is a listener
 socket.on('connect', function() {
-  console.log('Connected to server');
+  const params = $.deparam(window.location.search);
+
+  socket.emit('join', params, function(err) {
+    if (err) {
+      alert(err);
+      window.location.href = '/';
+    } else {
+      console.log('No error');
+    }
+  });
 });
 
 socket.on('serverMsg', function(m) {
@@ -52,11 +50,6 @@ socket.on('serverMsg', function(m) {
 
   messages.append(html);
   scrollToBottom();
-
-  // console.log(m);
-  // const li = $('<li></li>');
-  // li.text(`${m.sender} ${formattedTime}: ${m.text}`);
-  // messages.append(li);
 });
 
 socket.on('clientLocation', function(m) {
@@ -70,22 +63,22 @@ socket.on('clientLocation', function(m) {
 
   messages.append(html);
   scrollToBottom();
-  // console.log(m);
-  // const li = $('<li></li>');
-  // const a = $('<a target="_blank">My current location</a>');
-  // a.attr('href', m.url);
-  // li.text(`${m.sender} ${formattedTime}: `);
-  // li.append(a);
-  // messages.append(li);
 });
 
 socket.on('disconnect', function() {
   console.log('Disconnected from server');
 });
 
-// socket.on('clientJoin', m => console.log(m));
+socket.on('updateUserList', function(users) {
+  // console.log('Users list', users);
+  const ol = $('<ol></ol>');
+  users.forEach((user) => {
+    ol.append($('<li></li>').text(user));
+  });
 
-// socket.on('newClientJoin', m => console.log(m));
+  $('#users').html(ol);
+});
+
 
 function newMessage(message) {
   socket.emit('clientMsg', {sender: 'client', text: message });
