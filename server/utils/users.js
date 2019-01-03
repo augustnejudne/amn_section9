@@ -19,6 +19,12 @@ class Users {
     return _.find(this.users, (o) => o.id === id);
   }
 
+  userExists(name) {
+    if (_.find(this.users, (o) => o.name === name)) {
+      return true;
+    }
+  }
+
   getUserList(room) {
     const usersFiltered = _.filter(this.users, (o) => o.room === room);
     const names = usersFiltered.map((o) => o.name);

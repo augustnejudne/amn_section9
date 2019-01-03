@@ -11,6 +11,7 @@ const path = require('path');
 const { generateMessage, generateLocationMessage } = require('./utils/message');
 const { isRealString } = require('./utils/validation');
 const Users = require('./utils/users');
+const Rooms = require('./utils/rooms');
 
 /////////////////////
 // INITIALIZATIONS //
@@ -28,10 +29,11 @@ app.use(express.static(publicPath));
 // We need to configure the server to ALSO use socket.io
 const io = socketIO(server);
 
-//////////////////////
-// INITIALIZE USERS //
-//////////////////////
+////////////////////////
+// INITIALIZE CLASSES //
+////////////////////////
 const users = new Users();
+const rooms = new Rooms();
 
 // listen for an event and do something
 // io is the server.
@@ -46,6 +48,8 @@ io.on('connection', socket => {
   console.log(`${socket.id}`);
   console.log('New user connected');
 
+  io.emit('updateRoomList', rooms.getRoomList());
+
   ////////////////////
   // ON CLIENT JOIN //
   ////////////////////
@@ -53,11 +57,20 @@ io.on('connection', socket => {
     if (!isRealString(params.name) || !isRealString(params.room)) {
       return callback('Name and room name are required');
     }
+
+    // create a room
+    rooms.addRoom(params.room);
+
+    // Join the room
     socket.join(params.room);
     users.removeUser(socket.id);
-    users.addUser(socket.id, params.name, params.room);
-
-    io.to(params.room).emit('updateUserList', users.getUserList(params.room));
+    if (!users.userExists(params.name)) {
+      users.addUser(socket.id, params.name, params.room);
+      io.to(params.room).emit('updateUserList', users.getUserList(params.room));
+      io.emit('updateRoomList', rooms.getRoomList());
+    } else {
+      return callback(`${params.name} already in room.`);
+    }
 
     // socket.emit is the socket emitter.
     // why is this here, though?
@@ -80,7 +93,7 @@ io.on('connection', socket => {
   ///////////////////////
   socket.on('clientMsg', m => {
     const user = users.getUser(socket.id);
-    if ( user && isRealString(m.text)) {
+    if (user && isRealString(m.text)) {
       const msg = generateMessage(user.name, m.text);
       io.to(user.room).emit('serverMsg', msg);
     }
@@ -91,10 +104,14 @@ io.on('connection', socket => {
   ////////////////////////
   socket.on('clientLocation', location => {
     const user = users.getUser(socket.id);
-    if ( user ) {
+    if (user) {
       io.to(user.room).emit(
         'clientLocation',
-        generateLocationMessage(user.name , location.latitude, location.longitude)
+        generateLocationMessage(
+          user.name,
+          location.latitude,
+          location.longitude
+        )
       );
     }
   });
@@ -113,9 +130,19 @@ io.on('connection', socket => {
     // emit a 'serverMsg' informing the room that user.name has left
     if (user) {
       io.to(user.room).emit('updateUserList', users.getUserList(user.room));
-      io.to(user.room).emit('serverMsg', generateMessage('Admin', `${user.name} has left.`));
+      io.to(user.room).emit(
+        'serverMsg',
+        generateMessage('Admin', `${user.name} has left.`)
+      );
       // io.emit('serverMsg', generateMessage('Admin', `${user.name} has left.`));
+
+      const usersInRoom = users.getUserList(user.room);
+      if (usersInRoom.length === 0) {
+        rooms.removeRoom(user.room);
+        io.emit('updateRoomList', rooms.getRoomList());
+      }
     }
+
   });
 });
 

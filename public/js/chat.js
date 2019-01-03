@@ -43,10 +43,12 @@ const scrollToBottom = () => {
 // is called upon upon connecting to server
 socket.on('connect', function() {
   const params = $.deparam(window.location.search);
+  params.room = params.room.toLowerCase();
 
   // emit this upon joining a room
   // client immediately joins a room upon connect
   socket.emit('join', params, function(err) {
+    console.log(params);
     if (err) {
       alert(err);
       window.location.href = '/';
@@ -109,7 +111,6 @@ socket.on('clientLocation', function(m) {
  * listens for updateUserList event
  */
 socket.on('updateUserList', function(users) {
-  // console.log('Users list', users);
   const ol = $('<ol></ol>');
   users.forEach(user => {
     ol.append($('<li></li>').text(user));
@@ -117,6 +118,7 @@ socket.on('updateUserList', function(users) {
 
   $('#users').html(ol);
 });
+
 
 /////////////////////////
 // DOM BUTTON HANDLERS //
