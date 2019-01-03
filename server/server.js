@@ -2,47 +2,53 @@ const express = require('express');
 const socketIO = require('socket.io');
 const http = require('http');
 const path = require('path');
+// const fs = require('fs');
+// const { inspect } = require('util');
 
+//////////////////
+// UTILS IMPORT //
+//////////////////
 const { generateMessage, generateLocationMessage } = require('./utils/message');
 const { isRealString } = require('./utils/validation');
 const Users = require('./utils/users');
 
-require('dotenv').config();
-
+/////////////////////
+// INITIALIZATIONS //
+/////////////////////
 const publicPath = path.join(__dirname, '../public');
 const app = express();
 const server = http.createServer(app);
+require('dotenv').config();
+
+////////////////
+// MIDDLEWARE //
+////////////////
+app.use(express.static(publicPath));
 
 // We need to configure the server to ALSO use socket.io
 const io = socketIO(server);
 
+//////////////////////
+// INITIALIZE USERS //
+//////////////////////
 const users = new Users();
 
-// middlewares
-app.use(express.static(publicPath));
-
 // listen for an event and do something
+// io is the server.
+// io.on is the server eventHandler
 // 'connection' is an event that lets us listen to a connection
 //    and do something when that connection comes in
 // 'socket' represents the individual socket
 //    as opposed to all the connected users
+// This eventListener fires when a new connection is made to the server
+// let's see what socket is
 io.on('connection', socket => {
+  console.log(`${socket.id}`);
   console.log('New user connected');
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-
-    const user = users.removeUser(socket.id);
-
-    if (user) {
-      console.log(user);
-      io.to(user.room).emit('updateUserList', users.getUserList(user.room));
-      io.to(user.room).emit('serverMsg', generateMessage('Admin', `${user.name} has left.`));
-      // io.emit('serverMsg', generateMessage('Admin', `${user.name} has left.`));
-    }
-
-  });
-
+  ////////////////////
+  // ON CLIENT JOIN //
+  ////////////////////
   socket.on('join', (params, callback) => {
     if (!isRealString(params.name) || !isRealString(params.room)) {
       return callback('Name and room name are required');
@@ -53,6 +59,8 @@ io.on('connection', socket => {
 
     io.to(params.room).emit('updateUserList', users.getUserList(params.room));
 
+    // socket.emit is the socket emitter.
+    // why is this here, though?
     socket.emit(
       'serverMsg',
       generateMessage('Admin', 'Welcome to the ChatApp!')
@@ -67,19 +75,47 @@ io.on('connection', socket => {
     callback();
   });
 
+  ///////////////////////
+  // ON CLIENT MESSAGE //
+  ///////////////////////
   socket.on('clientMsg', m => {
-    const msg = generateMessage(m.sender, m.text);
-    console.log(msg);
-    io.emit('serverMsg', msg);
-    // socket.broadcast.emit('newMessage', msg);
-    // callback('Sever has successfully received your message.');
+    const user = users.getUser(socket.id);
+    if ( user && isRealString(m.text)) {
+      const msg = generateMessage(user.name, m.text);
+      io.to(user.room).emit('serverMsg', msg);
+    }
   });
 
+  ////////////////////////
+  // ON CLIENT LOCATION //
+  ////////////////////////
   socket.on('clientLocation', location => {
-    io.emit(
-      'clientLocation',
-      generateLocationMessage('Admin', location.latitude, location.longitude)
-    );
+    const user = users.getUser(socket.id);
+    if ( user ) {
+      io.to(user.room).emit(
+        'clientLocation',
+        generateLocationMessage(user.name , location.latitude, location.longitude)
+      );
+    }
+  });
+
+  //////////////////////////
+  // ON CLIENT DISCONNECT //
+  //////////////////////////
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+
+    // Upon disconnecting, remove user
+    const user = users.removeUser(socket.id);
+
+    // if a user is successfully removed,
+    // emit 'updateUserList' and
+    // emit a 'serverMsg' informing the room that user.name has left
+    if (user) {
+      io.to(user.room).emit('updateUserList', users.getUserList(user.room));
+      io.to(user.room).emit('serverMsg', generateMessage('Admin', `${user.name} has left.`));
+      // io.emit('serverMsg', generateMessage('Admin', `${user.name} has left.`));
+    }
   });
 });
 

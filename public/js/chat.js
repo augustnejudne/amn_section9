@@ -1,12 +1,20 @@
+/* eslint no-undef: 0 */
+///////////////
+// LIBRARIES //
+///////////////
 const socket = io();
 const $ = jQuery;
 
-// DOM SELECTORS
+///////////////////
+// DOM SELECTORS //
+///////////////////
 const message = $('#message');
 const messages = $('#messages');
 const sendLocationButton = $('#sendLocationButton');
 
-// UTILS
+///////////
+// UTILS //
+///////////
 const timeFormat = 'h:mm:ss a';
 
 const scrollToBottom = () => {
@@ -20,25 +28,48 @@ const scrollToBottom = () => {
   const newMessageHeight = newMessage.innerHeight();
   const lastMessageHeight = newMessage.prev().innerHeight();
 
-  if(clientHeight + scrollTop + newMessageHeight + lastMessageHeight >= scrollHeight) {
+  if (
+    clientHeight + scrollTop + newMessageHeight + lastMessageHeight >=
+    scrollHeight
+  ) {
     messages.scrollTop(scrollHeight);
   }
 };
 
-// REMEMBER: .on() is a listener
+///////////////////////
+// CLIENT ON CONNECT //
+///////////////////////
+// REMEMBER: .on() is an eventListener
+// is called upon upon connecting to server
 socket.on('connect', function() {
   const params = $.deparam(window.location.search);
 
+  // emit this upon joining a room
+  // client immediately joins a room upon connect
   socket.emit('join', params, function(err) {
     if (err) {
       alert(err);
       window.location.href = '/';
-    } else {
-      console.log('No error');
     }
   });
 });
 
+//////////////////////////
+// ON CLIENT DISCONNECT //
+//////////////////////////
+/**
+ * 'disconnect' is a built-in event
+ */
+socket.on('disconnect', function() {
+  console.log('Disconnected from server');
+});
+
+//////////////////////////////
+// CLIENT ON SERVER MESSAGE //
+//////////////////////////////
+/**
+ * Listens for an event from server called 'serverMsg'
+ */
 socket.on('serverMsg', function(m) {
   const messageTemplate = $('#messageTemplate').html();
   const formattedTime = moment(m.createdAt).format(timeFormat);
@@ -52,6 +83,12 @@ socket.on('serverMsg', function(m) {
   scrollToBottom();
 });
 
+///////////////////////////////
+// CLIENT ON CLIENT LOCATION //
+///////////////////////////////
+/**
+ * listens for an event from server called 'clientLocation'
+ */
 socket.on('clientLocation', function(m) {
   const locationTemplate = $('#locationTemplate').html();
   const formattedTime = moment(m.createdAt).format(timeFormat);
@@ -65,29 +102,28 @@ socket.on('clientLocation', function(m) {
   scrollToBottom();
 });
 
-socket.on('disconnect', function() {
-  console.log('Disconnected from server');
-});
-
+//////////////////////
+// UPDATE USER LIST //
+//////////////////////
+/**
+ * listens for updateUserList event
+ */
 socket.on('updateUserList', function(users) {
   // console.log('Users list', users);
   const ol = $('<ol></ol>');
-  users.forEach((user) => {
+  users.forEach(user => {
     ol.append($('<li></li>').text(user));
   });
 
   $('#users').html(ol);
 });
 
-
-function newMessage(message) {
-  socket.emit('clientMsg', {sender: 'client', text: message });
-}
-
-
+/////////////////////////
+// DOM BUTTON HANDLERS //
+/////////////////////////
 $('#messageForm').on('submit', function(e) {
   e.preventDefault();
-  newMessage(message.val());
+  socket.emit('clientMsg', { text: message.val() });
   message.val('');
 });
 
@@ -98,15 +134,19 @@ sendLocationButton.on('click', function() {
 
   sendLocationButton.attr('disabled', 'disabled').text('Sending Location...');
 
-  navigator.geolocation.getCurrentPosition( function (position) {
-    sendLocationButton.removeAttr('disabled').text('Send Location');
-    const userPosition = {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude
-    };
-    socket.emit('clientLocation', userPosition);
-  }, function () {
-    sendLocationButton.removeAttr('disabled').text('Send Location');
-    alert('Unable to fetch location!');
-  });
+  navigator.geolocation.getCurrentPosition(
+    function(position) {
+      const userPosition = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      socket.emit('clientLocation', userPosition);
+      // fs.writeFileSync('socket.txt', inspect(socket));
+      sendLocationButton.removeAttr('disabled').text('Send Location');
+    },
+    function() {
+      sendLocationButton.removeAttr('disabled').text('Send Location');
+      alert('Unable to fetch location!');
+    }
+  );
 });
